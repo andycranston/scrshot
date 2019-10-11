@@ -1,6 +1,6 @@
 # scrshot
 
-A screenshot utility written in Python 3 using my `monopng` class.
+A screenshot utility written in Python 3 using the `pyautogui` module and my `monopng` class.
 
 ## Consider something else
 
@@ -11,7 +11,7 @@ a well established program like Greenshot, LightShot or Snagit.
 
 I wanted something that did the following:
 
-* Saved images in grayscale in PNG files
+* Saved images in grayscale in PNG files to save space
 * Excluded the taskbar region at the bottom of the screen
 * Allowed a remote system to trigger a screenshot
 
@@ -28,7 +28,7 @@ This is for Windows 10.
 You will need:
 
 * Python 3
-* The 'pyautogui' module
+* The 'pyautogui' module - [click here](https://pyautogui.readthedocs.io/en/latest/introduction.html)
 * My 'monopng' class - [click here](https://github.com/andycranston/monopng)
 
 ## Running
