@@ -1,13 +1,13 @@
 #! /usr/bin/python3
 #
-# @(!--#) @(#) scrshot.py, version 002, 09-october-2019
+# @(!--#) @(#) scrshot.py, version 006, 26-october-2019
 #
 # a screenshot program by Andy Cranston
 #
 # cool feature #1: screenshots saved as monochrome PNG
 #
-# cool feature #2: sending a UDP packet to the host results in
-#                  triggering a screen shot
+# cool feature #2: sending a specially formatted UDP packet to the host
+#                  results in triggering a screen shot
 #
 
 ############################################################################
@@ -30,12 +30,12 @@ import monopng
 
 ############################################################################
 
-UDP_PORT = 8333
+DEFAULT_UDP_PORT = 8333
 SLEEP_INTERVAL = 0.1
 WATCHDOG_INTERVAL = 20
 PIXEL_REGION = 200
-TASKBAR_PIXELS = 40
-SCREEN_SHOT_DIRECTORY = 'c:\\andyc\\00tmp'
+DEFAULT_TASKBAR_WIDTH = 40
+DEFAULT_TASKBAR_POSITION = 'bottom'
 
 ############################################################################
 
@@ -54,6 +54,29 @@ def string2bytearray(s):
 
 ############################################################################
 
+def parseregion(regiontext):
+    nlist = regiontext.split(',')
+
+    if len(nlist) != 4:
+        return False
+
+    for number in nlist:
+        try:
+            n = int(number)
+        except ValueError:
+            return False
+        if n < 0:
+            return False
+
+    return (
+             int(nlist[0]) ,
+             int(nlist[1]) ,
+             int(nlist[2]) ,
+             int(nlist[3]) ,
+           )
+
+############################################################################
+
 #
 # Main
 #
@@ -61,26 +84,94 @@ def string2bytearray(s):
 def main():
     global progname
 
-    # create a TCP/IP socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+         userprofile = os.environ['USERPROFILE']
+    except KeyError:
+         userprofile = 'C:'
 
-    # bind the socket to the port
-    sock.bind(('', UDP_PORT))
+    defaultdir = userprofile + '\\Pictures'
+
+    screenwidth, screenheight = pyautogui.size()
+
+    screenregion = (0, 0, screenwidth, screenheight)
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--dir',      help='directory to save screenshots to', default=defaultdir)
+    parser.add_argument('--fs',       help='screenshot entire screen including taskbar', action="store_true")
+    parser.add_argument('--region',   help='the region of the screen to screenshot')
+    parser.add_argument('--tbw',      help='width of taskbar', default=DEFAULT_TASKBAR_WIDTH)
+    parser.add_argument('--tbp',      help='taskbar position', default=DEFAULT_TASKBAR_POSITION)
+    parser.add_argument('--noremote', help='do not allow remote triggering of screenshots', action="store_true")
+    parser.add_argument('--port',     help='UDP port number to listen on', default=DEFAULT_UDP_PORT)
+        
+    args = parser.parse_args()
+
+    dir = args.dir
+
+    if not os.path.isdir(dir):
+        print('{}: the path "{}" is not a directory'.format(progname, dir))
+        sys.exit(1)
+
+    if not os.access(dir, os.W_OK):
+        print('{}: the directory "{}" is not writable'.format(progname, dir))
+        sys.exit(1)
+
+    try:
+        tbw = int(args.tbw)
+    except ValueError:
+        print('{}: task bar width "{}" does not appear to be an integer'.format(progname, args.tbw))
+        sys.exit(1)
+
+    if tbw < 0:
+        print('{}: task bar width "{}" is negative'.format(progname, args.tbw))
+        sys.exit(1)
+
+    tbp = args.tbp.lower()
+
+    if (tbp == 'top') or (tbp == 't'):
+        screenregion = (0, tbw, screenwidth, screenheight - tbw)
+    elif (tbp == 'bottom') or (tbp == 'b'):
+        screenregion = (0, 0, screenwidth, screenheight - tbw)
+    elif (tbp == 'left') or (tbp == 'l'):
+        screenregion = (tbw, 0, screenwidth - tbw, screenheight)
+    elif (tbp == 'right') or (tbp == 'r'):
+        screenregion = (0, 0, screenwidth - tbw, screenheight)
+    else:
+        print('{}: task bar position "{}" is not valid'.format(progname, args.tbp))
+        sys.exit(1)
+
+    if args.fs:
+        screenregion = (0, 0, screenwidth, screenheight)
+
+    if args.region:
+        screenregion = parseregion(args.region)
+        if screenregion == False:
+            print('{}: region "{}" is not valid'.format(progname, args.region))
+            sys.exit(1)
+
+    ### print(screenregion)
+
+    try:
+        port = int(args.port)
+    except ValueError:
+        print('{}: UDP port number "{}" is not an integer'.format(progname, args.port))
+        sys.exit(1)
+
+    if not args.noremote:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(('', port))
 
     packetpayload = string2bytearray('please take a screenshot now')
 
-    screenWidth, screenHeight = pyautogui.size()
+    mpng = monopng.MonoPNG(screenregion[2], screenregion[3])
 
-    screenregion = (0, 0, screenWidth, screenHeight - TASKBAR_PIXELS)
-
-    mpng = monopng.MonoPNG(screenWidth, screenHeight - TASKBAR_PIXELS)
-
-    midWidth = screenWidth // 2
+    midWidth = screenwidth // 2
 
     lastMouseX = -1
     lastMouseY = -1
 
-    watchdogcounter = 0
+    watchdogcounter = WATCHDOG_INTERVAL
 
     while True:
         takescreenshot = False
@@ -98,19 +189,18 @@ def main():
                     takescreenshot = True
 
         # see if a UDP packet has been receieved which would trigger a screesnot
-        rlist, wlist, xlist = select.select([sock], [], [], 0.0)
-
-        if DEBUG:
-            print(rlist)
-
-        if len(rlist) > 0:
-            try:
-                packet, address = sock.recvfrom(65536)
-                if len(packet) == len(packetpayload):
-                    if packet == packetpayload:
-                        takescreenshot = True
-            except ConnectionResetError:
-                print("{}: connecton reset error - going again".format(progname), file=sys.stderr)
+        if not args.noremote:
+            rlist, wlist, xlist = select.select([sock], [], [], 0.0)
+            if DEBUG:
+                print(rlist)
+            if len(rlist) > 0:
+                try:
+                    packet, address = sock.recvfrom(65536)
+                    if len(packet) == len(packetpayload):
+                        if packet == packetpayload:
+                            takescreenshot = True
+                except ConnectionResetError:
+                    print("{}: connecton reset error - going again".format(progname), file=sys.stderr)
 
         if takescreenshot == False:
             if DEBUG:
@@ -122,12 +212,12 @@ def main():
                 watchdogcounter = 0
         else:
             print('Taking screenshot')
-            scrshotfile = '{}\\scrshot-{:%Y%m%d-%H%M%S}.png'.format(SCREEN_SHOT_DIRECTORY, datetime.datetime.now())
+            scrshotfile = '{}\\scrshot-{:%Y%m%d-%H%M%S}.png'.format(dir, datetime.datetime.now())
 
             scrshot = pyautogui.screenshot(region=screenregion)
 
-            for x in range(0, screenWidth):
-                for y in range(0, screenHeight - TASKBAR_PIXELS):
+            for x in range(0, screenregion[2]):
+                for y in range(0, screenregion[3]):
                     mpng.plot(x, y, rgb2mono(scrshot.getpixel( (x, y) )))
 
             mpng.write(scrshotfile)
@@ -142,7 +232,11 @@ def main():
 ############################################################################
 
 progname = os.path.basename(sys.argv[0])
-
-sys.exit(main())
+try:
+    sys.exit(main())
+except KeyboardInterrupt:
+    print('')
+    print('Exiting')
+    sys.exit(0)
 
 # end of file
