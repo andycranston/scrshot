@@ -92,14 +92,12 @@ This should trigger a screenshot on the local system.
 
 ## To Do
 
-Add command line arguments to specify the following:
+Things left to do...
 
-* A directory to save the screenshots in
-* A flag to toggle if the task bar is included or excluded from screenshots
-* The width in pixels of the task bar
-* The position of the task bar (bottom, top, left or right)
-* A flag to permit/forbid remote screenshot triggering
+* Amend this README.md file to include the command line argument documentation
+* Have a Solaris style "spinner" instead of the "Waiting for screenshot..." message scrolling up the command prompt window
+* Investigate having the program "daemonize" into the background
 
-----------------------------
+---------------------------------------------------
 
 End of README.md
