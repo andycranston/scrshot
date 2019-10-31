@@ -18,7 +18,7 @@ import socket
 
 ############################################################################
 
-UDP_PORT = 8333
+DEFAULT_UDP_PORT = 8333
 
 ############################################################################
 
@@ -44,18 +44,27 @@ def main():
         print(len(sys.argv))
 
     if len(sys.argv) <= 1:
-        host = '127.0.0.1'
+        hostandudp = '127.0.0.1'
     else:
-        host = sys.argv[1]
+        hostandudp = sys.argv[1]
+
+    fields = hostandudp.split(':')
+
+    host = fields[0]
+
+    if len(fields) >= 2:
+        udp = int(fields[1])
+    else:
+        udp = DEFAULT_UDP_PORT
 
     payloadstring = 'please take a screenshot now'
     packetpayload = string2bytearray(payloadstring)
 
-    print('Sending "{}" to host {} on UDP port {}'.format(payloadstring, host, UDP_PORT))
+    print('Sending "{}" to host {} on UDP port {}'.format(payloadstring, host, udp))
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    sock.sendto(packetpayload, (host, UDP_PORT))
+    sock.sendto(packetpayload, (host, udp))
 
     sock.close()
 
