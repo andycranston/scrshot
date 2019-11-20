@@ -40,11 +40,16 @@ the `scrshot.py` file.  Then type:
 python scrshot.py
 ```
 
-Every couple of seconds the following message will be printed:
+The following sequence of characters:
 
 ```
-Waiting for screenshot trigger action
+\-/|
 ```
+
+are displayed on top of each other giving a "spinner" style effect.  Anyone who
+has installed an older copy of the Solaris operating system using a serial terminal
+will recognise it :-]  This "spinner" is the sign that the program is ready to take
+a screenshot.
 
 If you get an error saying the `monopng.py` file cannot be found
 make sure you have downloaded my `monopng.py`file and copied it to one of:
@@ -52,10 +57,30 @@ make sure you have downloaded my `monopng.py`file and copied it to one of:
 * The same directory the `scrshot.py` file is in
 * A directory in one of the directories listed in the PYTHONPATH environment variable
 
+If you get an error saying the `pyautogui` module cannot be found
+make sure you have installed it ny typing:
+
+```
+pip install pyautogui
+```
+
 ## Taking a screenshot
 
-Move the mouse pointer to the very top and roughly in the middle of the screen.  Then move the mouse pointer
-down at least a few pixels.  This will trigger a screenshot.
+Move the mouse pointer to the very top and roughly in the middle of
+the screen.  Then move the mouse pointer down at least a few pixels.
+This will trigger a screenshot.
+
+When a screen shot has been taken a message similar to:
+
+```
+Taking a screenshot to file scrshot-20191120-151855.png ... done
+```
+
+will be displayed under the "spinner" and a new spinner will start.
+
+Note that because the screenshot has to be converted to my monochrome bitmap format
+the process takes a few seconds.  On my 7 year old laptop with
+a display resolution of 1366 by 768 pixels it takes approximately 5 to 6 seconds.
 
 ## Where are the screenshots saved?
 
@@ -84,7 +109,9 @@ If you want them stored somewhere else then look at the `--dir` command line opt
 ## Remote screenshots
 
 NB: Remote screenshots only work if both the local and remote systems can communicate
-with each over using IPv4 addresses using UDP port 8333.
+with each other using IPv4 addresses and UDP.  By default the UDP port number
+used will be 8333 but another port number can be specified using the appropriate command
+line option.
 
 Copy the `scrtrigger.py` Python 3 program to a remote system that has Python 3 installed.
 
@@ -113,8 +140,6 @@ IP address was `192.168.8.53` then type:
 python scrtrigger.py 192.168.8.53:9444
 ```
 
-
-
 ## Command line options
 
 The following sections document the various command line options.
@@ -135,7 +160,7 @@ Note that you must have access rights to create files in the specified directory
 ### -fs
 
 The `--fs` command line option will make the `scrshot.py` program take screenshots
-of the entire screen ('fs' meaning Full Screen).
+of the entire screen (`fs` meaning `Full Screen`).
 
 For example:
 
@@ -154,7 +179,7 @@ to screenshot.  The argument value is a list of four integers separated by comma
 100,200,500,350
 ```
 
-The first number specifies how many pixels across the region sparts.  The second number
+The first number specifies how many pixels across the region starts.  The second number
 specifies how many pixels down the region starts.  The third number specfies
 the width of the screenshot area.  The fourth number specifies the height of the screenshot area.
 
@@ -217,7 +242,7 @@ This disables the remote screenshot functionality.
 ### --port
 
 The `--port` command line option specifies a different UDP port number
-to listen on for remorte screenshot trigger messages from remote hosts.
+to listen on for remote screenshot trigger messages from remote hosts.
 The UDP port number defaults to 8333 but if a different port number is required
 such as 9444 then use:
 
@@ -238,7 +263,7 @@ python scrshot.py --dir C:\Windows\Temp --fs --noremote
 will take full screen screenshots to directory `C:\Windows\Temp` and not allow remote
 screenshot triggering.
 
-As another example:
+Another example:
 
 ```
 python scrshot.py --tbw 72 --tbp right --port 9444
@@ -257,7 +282,7 @@ overrides `--tbp'.  However, do not rely on this behaviour as it may change.  In
 
 Things left to do ...
 
-* Have a Solaris style "spinner" instead of the "Waiting for screenshot..." message scrolling up the command prompt window
+* Find a faster way to convert the image to a monochrome format
 * Investigate having the program "daemonize" into the background
 
 ---------------------------------------------------
