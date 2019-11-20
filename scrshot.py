@@ -32,6 +32,7 @@ import monopng
 
 DEFAULT_UDP_PORT = 8333
 SLEEP_INTERVAL = 0.1
+WATCHDOG_STRING = '/-\\|'
 WATCHDOG_INTERVAL = 20
 PIXEL_REGION = 200
 DEFAULT_TASKBAR_WIDTH = 40
@@ -171,7 +172,8 @@ def main():
     lastMouseX = -1
     lastMouseY = -1
 
-    watchdogcounter = WATCHDOG_INTERVAL
+    watchdogstring = WATCHDOG_STRING
+    watchdogcounter = 0
 
     while True:
         takescreenshot = False
@@ -202,19 +204,15 @@ def main():
                 except ConnectionResetError:
                     print("{}: connecton reset error - going again".format(progname), file=sys.stderr)
 
-        if takescreenshot == False:
-            if DEBUG:
-                print('No Change - sleeping')
-            time.sleep(SLEEP_INTERVAL)
-            watchdogcounter += 1
-            if watchdogcounter > WATCHDOG_INTERVAL:
-                print('Waiting for screenshot trigger action')
-                watchdogcounter = 0
-        else:
-            print('Taking screenshot')
-            scrshotfile = '{}\\scrshot-{:%Y%m%d-%H%M%S}.png'.format(dir, datetime.datetime.now())
+        if takescreenshot:
+            scrshotbasefilename = 'scrshot-{:%Y%m%d-%H%M%S}.png'.format(datetime.datetime.now())
+            ### print('')
+            print('Taking screenshot to file {} .'.format(scrshotbasefilename), end='', flush=True)
 
+            scrshotfile = '{}\\{}'.format(dir, scrshotbasefilename)
             scrshot = pyautogui.screenshot(region=screenregion)
+
+            print('.', end='', flush=True)
 
             for x in range(0, screenregion[2]):
                 for y in range(0, screenregion[3]):
@@ -222,7 +220,17 @@ def main():
 
             mpng.write(scrshotfile)
 
-            print('Done')
+            print('. done')
+        else:
+            if DEBUG:
+                print('No Change - sleeping')
+                print(watchdogcounter)
+            print('{}\r'.format(watchdogstring[watchdogcounter]), end='', flush=True)
+            time.sleep(SLEEP_INTERVAL)
+            watchdogcounter += 1
+            if watchdogcounter >= len(watchdogstring):
+                ### print('Waiting for screenshot trigger action')
+                watchdogcounter = 0
                 
         lastMouseX = currentMouseX
         lastMouseY = currentMouseY
